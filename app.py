@@ -91,7 +91,7 @@ if gare_file and voti_pdf:
                 st.markdown(f"**{arbitro['Cognome']} {arbitro['Nome']}**")
                 st.markdown(f"`{cod_mecc}` – {arbitro['Ruolo']}")
 st.markdown(f"Sezione: {arbitro['Sezione']}  \nEtà: {arbitro['Età']}  \nAnzianità: {arbitro['Anzianità']}")
-            with col2:
+with col2:
                 for _, gara in gruppo.iterrows():
                     info = f"🗓️ {gara['Data Gara'].date()} | Gara {gara['NumGara']} | OA: {gara['Voto OA']} – OT: {gara['Voto OT']}"
                     st.markdown(f"- {info}")
