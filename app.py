@@ -93,7 +93,6 @@ def carica_indisponibili(uploaded_file):
 
     df_expanded = pd.DataFrame(expanded_rows)
     return df_expanded
-
 # Merge voti con Cod.Mecc. usando NumGara tramite df_gare
 if not df_voti_raw.empty and not df_gare.empty:
     if "NumGara" in df_gare.columns and "Cod.Mecc." in df_gare.columns:
