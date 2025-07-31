@@ -68,29 +68,31 @@ def estrai_voti(pdf_file):
 
 # Caricamento indisponibilità
 @st.cache_data
+def carica_indisponibili(uploaded_file):
+    df = pd.read_excel(uploaded_file)
+    df.columns = [str(c).strip().lower() for c in df.columns]
 
-def carica_indisponibili(file):
-    df = pd.read_excel(file)
-    df.columns = df.columns.str.strip()
-    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.strip()
-    df["Data"] = pd.to_datetime(df["Data"], errors='coerce')
-    return df
+    if "cod.mecc." not in df.columns or "inizio" not in df.columns or "fine" not in df.columns:
+        st.error(f"❌ Colonne richieste non trovate. Trovate: {list(df.columns)}")
+        st.stop()
 
-# Periodo di test: dal 01/05/2025 al 30/06/2025
-start_test = datetime(2025, 5, 1)
-end_test = datetime(2025, 6, 30)
-settimane = get_weeks(start_test, end_test)
+    df["cod.mecc."] = df["cod.mecc."].astype(str).str.strip()
+    df["inizio"] = pd.to_datetime(df["inizio"], errors="coerce")
+    df["fine"] = pd.to_datetime(df["fine"], errors="coerce")
 
-# Caricamento file settimanali
-gare_file = st.file_uploader("Carica file CRA01 (.csv)", type=["csv"])
-voti_file = st.file_uploader("Carica file voti (.pdf)", type=["pdf"])
-indisponibili_file = st.file_uploader("Carica file indisponibilità (.xlsx)", type=["xlsx"])
+    # Espande ogni riga in più righe per ciascuna data tra Inizio e Fine
+    expanded_rows = []
+    for _, row in df.iterrows():
+        if pd.notnull(row["inizio"]) and pd.notnull(row["fine"]):
+            for single_date in pd.date_range(start=row["inizio"], end=row["fine"], freq="D"):
+                expanded_rows.append({
+                    "Cod.Mecc.": row["cod.mecc."],
+                    "Data": single_date,
+                    "Motivazione": row.get("motivazione", "")
+                })
 
-# Caricamento e unione dati se disponibili
-df_arbitri = carica_anagrafica()
-df_gare = carica_gare(gare_file) if gare_file else pd.DataFrame()
-df_voti_raw = estrai_voti(voti_file) if voti_file else pd.DataFrame()
-df_indisp = carica_indisponibili(indisponibili_file) if indisponibili_file else pd.DataFrame()
+    df_expanded = pd.DataFrame(expanded_rows)
+    return df_expanded
 
 # Merge voti con Cod.Mecc. usando NumGara tramite df_gare
 if not df_voti_raw.empty and not df_gare.empty:
