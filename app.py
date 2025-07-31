@@ -5,9 +5,12 @@ from datetime import datetime, timedelta
 
 st.set_page_config(layout="wide")
 
+# Funzioni di caricamento
+
 @st.cache_data
 def carica_anagrafica():
     df = pd.read_excel("Arbitri.xlsx")
+    df.columns = df.columns.str.strip()
     df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.strip()
     return df
 
@@ -31,55 +34,44 @@ def carica_gare(file):
 @st.cache_data
 def carica_indisponibili(file):
     df = pd.read_excel(file)
+    df.columns = df.columns.str.strip()
     df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.strip()
-    df["Inizio"] = pd.to_datetime(df["Inizio"], errors="coerce")
-    df["Fine"] = pd.to_datetime(df["Fine"], errors="coerce")
+    df["Inizio"] = pd.to_datetime(df["Inizio"], errors='coerce')
+    df["Fine"] = pd.to_datetime(df["Fine"], errors='coerce')
+    df["Motivo"] = df["Motivo"].astype(str)
     return df
 
+@st.cache_data
 def estrai_voti_da_pdf(pdf_file):
     reader = PdfReader(pdf_file)
     text = ""
     for page in reader.pages:
-        text += page.extract_text()
+        text += page.extract_text() + "\n"
     righe = text.split("\n")
-    dati = []
+
+    voti = []
     for riga in righe:
-        parti = riga.strip().split()
-        for i in range(len(parti) - 2):
-            if parti[i].isdigit():
-                try:
-                    oa = float(parti[i + 1].replace(",", "."))
-                    ot = float(parti[i + 2].replace(",", "."))
-                    dati.append({
-                        "NumGara": parti[i],
-                        "Voto OA": oa,
-                        "Voto OT": ot
-                    })
-                except:
-                    continue
-    df = pd.DataFrame(dati)
-    df["NumGara"] = df["NumGara"].astype(str).str.strip()
-    return df
+        parti = riga.split()
+        if len(parti) >= 3:
+            numgara = parti[0]
+            try:
+                oa = float(parti[-2].replace(",", "."))
+                ot = float(parti[-1].replace(",", "."))
+                voti.append({"NumGara": numgara, "OA": oa, "OT": ot})
+            except:
+                continue
+    df_voti = pd.DataFrame(voti)
+    df_voti["NumGara"] = df_voti["NumGara"].astype(str).str.strip()
+    return df_voti
 
-# Periodo di riferimento
-data_inizio = datetime(2025, 5, 1)
-data_fine = datetime(2025, 6, 30)
-settimane = []
-data_corrente = data_inizio
-while data_corrente <= data_fine:
-    fine_settimana = data_corrente + timedelta(days=6)
-    settimane.append((data_corrente, fine_settimana))
-    data_corrente += timedelta(days=7)
+# Interfaccia
 
-st.title("🟢 Gestione Arbitri - Visualizzazione Settimanale")
+st.title("📋 Gestione Arbitri – Visualizzazione settimanale")
 
-# Caricamento file
-col1, col2 = st.columns(2)
-with col1:
-    gare_file = st.file_uploader("📥 Carica file 'cra01.xlsx' (Excel senza intestazioni)", type=["xlsx"])
-with col2:
-    voti_file = st.file_uploader("📥 Carica file voti PDF", type=["pdf"])
-indisponibili_file = st.file_uploader("📥 Carica file indisponibilità (Excel)", type=["xlsx"])
+with st.sidebar:
+    gare_file = st.file_uploader("📥 Carica il file CRA01 (Excel)", type=["xlsx"])
+    voti_file = st.file_uploader("📥 Carica il PDF Voti OA/OT", type=["pdf"])
+    indisponibili_file = st.file_uploader("📥 Carica il file Indisponibili (Excel)", type=["xlsx"])
 
 # Caricamento dati
 df_arbitri = carica_anagrafica()
@@ -88,59 +80,57 @@ df_voti_raw = estrai_voti_da_pdf(voti_file) if voti_file else pd.DataFrame()
 df_indisp = carica_indisponibili(indisponibili_file) if indisponibili_file else pd.DataFrame()
 
 # Merge gare + voti
-if not df_voti_raw.empty and not df_gare.empty:
-    df_gare["NumGara"] = df_gare["NumGara"].astype(str).str.strip()
-    df_voti_raw["NumGara"] = df_voti_raw["NumGara"].astype(str).str.strip()
-    df_merged = pd.merge(df_gare, df_voti_raw, on="NumGara", how="left", suffixes=('', '_voti'))
-    df_merged["Cod.Mecc."] = df_merged["Cod.Mecc."].astype(str).str.strip()
-else:
-    df_merged = df_gare.copy()
+df_merged = pd.merge(df_gare, df_voti_raw, on="NumGara", how="left")
+if "Cod.Mecc." not in df_merged.columns:
+    st.error("❌ Colonna 'Cod.Mecc.' mancante nel dataframe gare.")
+    st.stop()
+
+# Settimane calcistiche
+start = datetime(2025, 5, 1)
+end = datetime(2025, 6, 30)
+settimane = []
+current = start
+while current <= end:
+    fine = current + timedelta(days=6)
+    settimane.append((current, fine))
+    current = fine + timedelta(days=1)
 
 # Visualizzazione
-for idx, arbitro in df_arbitri.iterrows():
-    cod_mecc = str(arbitro["Cod.Mecc."]).strip()
-    st.markdown(f"### 👤 {arbitro['Cognome']} {arbitro['Nome']}")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"**Sezione:** {arbitro['Sezione']}")
-    with col2:
-        st.markdown(f"**Età:** {arbitro['Età']}")
+for _, arbitro in df_arbitri.iterrows():
+    cod_mecc = arbitro["Cod.Mecc."]
+    with st.expander(f"{arbitro['Cognome']} {arbitro['Nome']} ({cod_mecc})"):
+        col1, col2, col3 = st.columns(3)
+        col1.markdown(f"**Sezione:** {arbitro['Sezione']}")
+        col2.markdown(f"**Età:** {arbitro['Età']}")
 
-    cols = st.columns(len(settimane))
-    for i, (start, end) in enumerate(settimane):
-        cella = ""
+        for inizio, fine in settimane:
+            col = st.columns(1)[0]
+            settimana_label = f"🗓 {inizio.strftime('%d/%m')} – {fine.strftime('%d/%m')}"
+            settimana_df = df_merged[
+                (df_merged["Cod.Mecc."] == cod_mecc) &
+                (df_merged["DataGara"] >= inizio) &
+                (df_merged["DataGara"] <= fine)
+            ]
 
-        # Gara settimanale
-        gare_sett = df_merged[
-            (df_merged["Cod.Mecc."] == cod_mecc) &
-            (df_merged["DataGara"] >= start) &
-            (df_merged["DataGara"] <= end)
-        ]
-        for _, gara in gare_sett.iterrows():
-            cat = gara["Categoria"]
-            gir = gara["Girone"]
-            ruolo = gara["Ruolo"]
-            voto_oa = gara.get("Voto OA", "")
-            voto_ot = gara.get("Voto OT", "")
-            voto_txt = ""
-            if pd.notna(voto_oa):
-                voto_txt += f" OA: {voto_oa:.2f}"
-            if pd.notna(voto_ot):
-                voto_txt += f" OT: {voto_ot:.2f}"
-            cella += f"{cat} – {gir} – {ruolo}{voto_txt}\n"
+            testo = ""
+            for _, gara in settimana_df.iterrows():
+                cat = gara["Categoria"]
+                gir = gara["Girone"]
+                ruolo = gara["Ruolo"]
+                oa = f"OA: {gara['OA']:.2f}" if pd.notna(gara['OA']) else "OA: –"
+                ot = f"OT: {gara['OT']:.2f}" if pd.notna(gara['OT']) else "OT: –"
+                testo += f"**{cat} – {gir} – {ruolo}**  \n{oa} {ot}\n\n"
 
-        # Indisponibilità settimanale
-        indisp = df_indisp[
-            (df_indisp["Cod.Mecc."] == cod_mecc) &
-            (df_indisp["Inizio"] <= end) &
-            (df_indisp["Fine"] >= start)
-        ]
-        for _, row in indisp.iterrows():
-            motivo = row["motivo"] if "motivo" in row else "Indisponibile"
-            cella += f"❌ {motivo}\n"
+            # Indisponibilità
+            indisps = df_indisp[
+                (df_indisp["Cod.Mecc."] == cod_mecc) &
+                (df_indisp["Inizio"] <= fine) & (df_indisp["Fine"] >= inizio)
+            ]
+            for _, ind in indisps.iterrows():
+                motivo = ind["Motivo"]
+                testo += f"❌ *Indisp.*: {motivo}\n\n"
 
-        if cella == "":
-            cella = "-"
-        cols[i].markdown(f"**{start.strftime('%d/%m')}**\n\n{cella}")
+            if testo == "":
+                testo = "—"
 
-    st.markdown("---")
+            col.markdown(f"**{settimana_label}**\n\n{testo}")
