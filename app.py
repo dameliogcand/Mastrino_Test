@@ -30,13 +30,20 @@ def carica_anagrafica():
 
 @st.cache_data
 def carica_gare(file):
-   df = pd.read_csv(file, dtype=str, header=None)
+    df = pd.read_csv(file, dtype=str, header=None)
 
-st.warning(f"🧾 Il file ha {df.shape[1]} colonne: {list(df.iloc[0].values)}")
+    # Debug temporaneo per vedere struttura del file
+    st.warning(f"📄 Il file CRA01 ha {df.shape[1]} colonne.")
+    st.write(df.head())
+    st.stop()
 
-# Fermiamo l'esecuzione per vedere le colonne prima di assegnare i nomi
-st.stop(
-)
+    df.columns = [
+        "NumGara", "Cod.Mecc.", "Categoria", "Giornata", "Girone",
+        "Data Gara", "Ora", "Cod1", "Squadra1", "Cod2", "Squadra2",
+        "CodCampo", "Campo", "Località", "IdGara", "Ruolo",
+        "Cod.Mecc.2", "Cognome", "Nome", "Età", "Sezione", "Anzianità", "Altro"
+    ]
+
     df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
     df["NumGara"] = df["NumGara"].astype(str).str.strip()
     df["Data Gara"] = pd.to_datetime(df["Data Gara"], dayfirst=True, errors="coerce")
