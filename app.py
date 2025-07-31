@@ -10,6 +10,7 @@ st.title("Gestione Arbitri - Periodo di Test (01/05/2025 - 30/06/2025)")
 # Funzioni per caricare i dati
 @st.cache_data
 def carica_anagrafica():
+    st.write("Colonne in df_merged:", df_merged.columns.tolist())
     df = pd.read_excel("Arbitri.xlsx")
     df.columns = df.columns.str.strip()
     df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.replace('.0', '', regex=False).str.strip()
