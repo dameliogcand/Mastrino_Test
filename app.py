@@ -116,7 +116,6 @@ for _, arbitro in anagrafica_df.iterrows():
         col1, col2, col3 = st.columns(3)
         col1.markdown(f"**Sezione:** {arbitro['Sezione']}")
         col2.markdown(f"**Età:** {arbitro['Età']}")
-        col3.markdown(f"**Anzianità:** {arbitro['Anzianità']}")
 
         cod = str(arbitro["Cod.Mecc."]).strip()
         data_settimanale = []
