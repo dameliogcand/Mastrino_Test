@@ -24,20 +24,40 @@ def carica_anagrafica():
     if "Cod.Mecc." not in colonne:
         st.error(f"❌ Colonna 'Cod.Mecc.' non trovata. Colonne disponibili: {list(colonne.keys())}")
         st.stop()
-    col_codmecc = colonne["Cod.Mecc."]
-    df[col_codmecc] = df[col_codmecc].str.strip()
-    df = df.rename(columns={col_codmecc: "Cod.Mecc."})
+    df = df.rename(columns={colonne["Cod.Mecc."]: "Cod.Mecc."})
+    df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
     return df
 
 @st.cache_data
 def carica_gare(file):
-    df = pd.read_csv(file, dtype=str)
-    df.columns = [c.strip() for c in df.columns]
-    colonne = {col.strip(): col for col in df.columns}
-    if "Cod.Mecc." not in colonne:
-        st.error(f"❌ Colonna 'Cod.Mecc.' non trovata. Colonne disponibili: {list(colonne.keys())}")
-        st.stop()
-    df = df.rename(columns={colonne["Cod.Mecc."]: "Cod.Mecc."})
+    df = pd.read_csv(file, dtype=str, header=None)
+
+    df.columns = [
+        "NumGara",       # 0
+        "Cod.Mecc.",     # 1
+        "Categoria",     # 2
+        "Giornata",      # 3
+        "Girone",        # 4
+        "Data Gara",     # 5
+        "Ora",           # 6
+        "Cod1",          # 7
+        "Squadra1",      # 8
+        "Cod2",          # 9
+        "Squadra2",      # 10
+        "CodCampo",      # 11
+        "Campo",         # 12
+        "Località",      # 13
+        "IdGara",        # 14
+        "Ruolo",         # 15
+        "Cod.Mecc.2",    # 16
+        "Cognome",       # 17
+        "Nome",          # 18
+        "Età",           # 19
+        "Sezione",       # 20
+        "Anzianità",     # 21
+        "Altro"          # 22
+    ]
+
     df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
     df["NumGara"] = df["NumGara"].astype(str).str.strip()
     df["Data Gara"] = pd.to_datetime(df["Data Gara"], dayfirst=True, errors="coerce")
@@ -94,7 +114,7 @@ if gare_file and voti_pdf:
             arbitro = gruppo.iloc[0]
             col1, col2 = st.columns([1, 4])
             with col1:
-                st.markdown(f"**{arbitro['Cognome']} {arbitro['Nome']}**")
+                st.markdown(f"**{arbitro.get('Cognome', '')} {arbitro.get('Nome', '')}**")
                 st.markdown(f"`{cod_mecc}` – {arbitro.get('Ruolo', '')}")
                 st.markdown(f"Sezione: {arbitro.get('Sezione', '')}  \nEtà: {arbitro.get('Età', '')}  \nAnzianità: {arbitro.get('Anzianità', '')}")
             with col2:
