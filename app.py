@@ -20,7 +20,18 @@ DATA_FINE = datetime.date(2025, 6, 30)
 @st.cache_data
 def carica_anagrafica():
     df = pd.read_excel(arbitri_file, dtype=str)
-    df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
+    df.columns = df.columns.str.strip()  # Rimuove spazi dai nomi colonna
+
+    # Corregge il nome della colonna Cod.Mecc.
+    colonne = {col.strip(): col for col in df.columns}
+    if "Cod.Mecc." not in colonne:
+        st.error(f"❌ Colonna 'Cod.Mecc.' non trovata. Colonne disponibili: {list(colonne.keys())}")
+        st.stop()
+    
+    # Usa il nome originale della colonna (anche se ha spazi)
+    col_codmecc = colonne["Cod.Mecc."]
+    df[col_codmecc] = df[col_codmecc].str.strip()
+    df = df.rename(columns={col_codmecc: "Cod.Mecc."})  # Rinominata internamente in modo sicuro
     return df
 
 @st.cache_data
