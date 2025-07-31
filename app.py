@@ -19,19 +19,15 @@ DATA_FINE = datetime.date(2025, 6, 30)
 
 @st.cache_data
 def carica_anagrafica():
-    df = pd.read_excel(arbitri_file, dtype=str)
-    df.columns = df.columns.str.strip()  # Rimuove spazi dai nomi colonna
-
-    # Corregge il nome della colonna Cod.Mecc.
+    df = pd.read_excel(arbitri_file, dtype=str, skiprows=1)
+    df.columns = df.columns.str.strip()
     colonne = {col.strip(): col for col in df.columns}
     if "Cod.Mecc." not in colonne:
         st.error(f"❌ Colonna 'Cod.Mecc.' non trovata. Colonne disponibili: {list(colonne.keys())}")
         st.stop()
-    
-    # Usa il nome originale della colonna (anche se ha spazi)
     col_codmecc = colonne["Cod.Mecc."]
     df[col_codmecc] = df[col_codmecc].str.strip()
-    df = df.rename(columns={col_codmecc: "Cod.Mecc."})  # Rinominata internamente in modo sicuro
+    df = df.rename(columns={col_codmecc: "Cod.Mecc."})
     return df
 
 @st.cache_data
@@ -39,6 +35,7 @@ def carica_gare(file):
     df = pd.read_csv(file, dtype=str)
     df.columns = [c.strip() for c in df.columns]
     df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
+    df["NumGara"] = df["NumGara"].astype(str).str.strip()
     df["Data Gara"] = pd.to_datetime(df["Data Gara"], dayfirst=True, errors="coerce")
     return df
 
@@ -71,14 +68,10 @@ def carica_indisponibili(file):
     df["Data"] = pd.to_datetime(df["Data"], dayfirst=True, errors="coerce")
     return df
 
-# Caricamento dati
 if gare_file and voti_pdf:
     df_arbitri = carica_anagrafica()
     df_gare = carica_gare(gare_file)
     df_voti = carica_voti(voti_pdf)
-
-    df_gare["NumGara"] = df_gare["NumGara"].astype(str).str.strip()
-    df_voti["NumGara"] = df_voti["NumGara"].astype(str).str.strip()
 
     df_merge = df_gare.merge(df_voti, on="NumGara", how="left")
     df_merge = df_merge.merge(df_arbitri, on="Cod.Mecc.", how="left")
@@ -107,7 +100,7 @@ if gare_file and voti_pdf:
 
             if indisponibili_file:
                 df_ind = carica_indisponibili(indisponibili_file)
-                ind_arbitro = df_ind[(df_ind["Cod.Mecc."] == cod_mecc)]
+                ind_arbitro = df_ind[df_ind["Cod.Mecc."] == cod_mecc]
                 if not ind_arbitro.empty:
                     ind_sel = ind_arbitro[ind_arbitro["Data"].dt.to_period("W").apply(lambda r: r.start_time.strftime('%Y-%m-%d')) == settimana_sel]
                     for _, ind in ind_sel.iterrows():
@@ -118,6 +111,5 @@ if gare_file and voti_pdf:
         medie.columns = ["Cod.Mecc.", "Media Voto OA", "Media Voto OT"]
         st.subheader("📊 Medie OA / OT")
         st.dataframe(medie, use_container_width=True)
-
 else:
     st.info("Caricare i file CRA01 (.csv) e PDF voti per iniziare.")
