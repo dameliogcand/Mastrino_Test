@@ -18,11 +18,13 @@ def carica_anagrafica():
     return df
 
 @st.cache_data
+@st.cache_data
 def carica_gare(file):
     df = pd.read_csv(file, header=None, encoding="utf-8")
-    df = df[[1, 2, 3, 4, 6, 16, 17]]  # Colonne per NumGara, Categoria, Girone, Data, Ruolo, Cod.Mecc.
+    df = df[[1, 2, 3, 6, 16, 17]]
     df.columns = ["NumGara", "Categoria", "Girone", "DataGara", "Ruolo", "Cod.Mecc."]
     df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.strip()
+    df["NumGara"] = df["NumGara"].astype(str).str.strip()
     df["DataGara"] = pd.to_datetime(df["DataGara"], errors="coerce")
     return df
 
