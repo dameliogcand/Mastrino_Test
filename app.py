@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import pdfplumber
 import datetime
-import os
 
 st.set_page_config(layout="wide")
 st.title("Gestione Arbitri – C.A.N. D")
@@ -15,7 +14,6 @@ gare_file = st.sidebar.file_uploader("📋 Gare CRA01 (.csv)", type=["csv"])
 voti_pdf = st.sidebar.file_uploader("📑 Voti OA/OT (.pdf)", type=["pdf"])
 indisponibili_file = st.sidebar.file_uploader("⛔ Indisponibilità (.xlsx)", type=["xlsx"])
 
-# Impostazioni date
 DATA_INIZIO = datetime.date(2025, 5, 1)
 DATA_FINE = datetime.date(2025, 6, 30)
 
@@ -90,8 +88,8 @@ if gare_file and voti_pdf:
             with col1:
                 st.markdown(f"**{arbitro['Cognome']} {arbitro['Nome']}**")
                 st.markdown(f"`{cod_mecc}` – {arbitro['Ruolo']}")
-st.markdown(f"Sezione: {arbitro['Sezione']}  \nEtà: {arbitro['Età']}  \nAnzianità: {arbitro['Anzianità']}")
-with col2:
+                st.markdown(f"Sezione: {arbitro['Sezione']}  \nEtà: {arbitro['Età']}  \nAnzianità: {arbitro['Anzianità']}")
+            with col2:
                 for _, gara in gruppo.iterrows():
                     info = f"🗓️ {gara['Data Gara'].date()} | Gara {gara['NumGara']} | OA: {gara['Voto OA']} – OT: {gara['Voto OT']}"
                     st.markdown(f"- {info}")
@@ -104,7 +102,6 @@ with col2:
                     for _, ind in ind_sel.iterrows():
                         st.warning(f"⚠️ Indisponibile il {ind['Data'].date()}: {ind['Motivo']}")
 
-        # Calcolo medie voti
         medie = df_settimana.groupby("Cod.Mecc.")[["Voto OA", "Voto OT"]].apply(
             lambda x: pd.to_numeric(x, errors='coerce').mean()).reset_index()
         medie.columns = ["Cod.Mecc.", "Media Voto OA", "Media Voto OT"]
