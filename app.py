@@ -64,7 +64,12 @@ def carica_voti(pdf_file):
 @st.cache_data
 def carica_indisponibili(file):
     df = pd.read_excel(file, dtype=str)
-    df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
+    colonne = {c.strip(): c for c in df.columns}
+if "Cod.Mecc." not in colonne:
+    st.error(f"❌ Colonna 'Cod.Mecc.' non trovata. Colonne disponibili: {list(colonne.keys())}")
+    st.stop()
+df = df.rename(columns={colonne["Cod.Mecc."]: "Cod.Mecc."})
+df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
     df["Data"] = pd.to_datetime(df["Data"], dayfirst=True, errors="coerce")
     return df
 
