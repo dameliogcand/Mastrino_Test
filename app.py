@@ -36,7 +36,6 @@ st.warning(f"🧾 Il file ha {df.shape[1]} colonne: {list(df.iloc[0].values)}")
 
 # Fermiamo l'esecuzione per vedere le colonne prima di assegnare i nomi
 st.stop()
-
     df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
     df["NumGara"] = df["NumGara"].astype(str).str.strip()
     df["Data Gara"] = pd.to_datetime(df["Data Gara"], dayfirst=True, errors="coerce")
