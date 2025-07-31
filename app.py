@@ -6,10 +6,9 @@ import datetime
 st.set_page_config(layout="wide")
 st.title("Gestione Arbitri – C.A.N. D")
 
-# Upload sezione
+# Upload file settimanali
 st.sidebar.header("📂 Caricamento dati settimanali")
-
-arbitri_file = "Arbitri.xlsx"  # fisso e già incluso
+arbitri_file = "Arbitri.xlsx"  # fisso e preincluso
 gare_file = st.sidebar.file_uploader("📋 Gare CRA01 (.csv)", type=["csv"])
 voti_pdf = st.sidebar.file_uploader("📑 Voti OA/OT (.pdf)", type=["pdf"])
 indisponibili_file = st.sidebar.file_uploader("⛔ Indisponibilità (.xlsx)", type=["xlsx"])
@@ -34,6 +33,11 @@ def carica_anagrafica():
 def carica_gare(file):
     df = pd.read_csv(file, dtype=str)
     df.columns = [c.strip() for c in df.columns]
+    colonne = {col.strip(): col for col in df.columns}
+    if "Cod.Mecc." not in colonne:
+        st.error(f"❌ Colonna 'Cod.Mecc.' non trovata. Colonne disponibili: {list(colonne.keys())}")
+        st.stop()
+    df = df.rename(columns={colonne["Cod.Mecc."]: "Cod.Mecc."})
     df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
     df["NumGara"] = df["NumGara"].astype(str).str.strip()
     df["Data Gara"] = pd.to_datetime(df["Data Gara"], dayfirst=True, errors="coerce")
@@ -64,12 +68,7 @@ def carica_voti(pdf_file):
 @st.cache_data
 def carica_indisponibili(file):
     df = pd.read_excel(file, dtype=str)
-    colonne = {c.strip(): c for c in df.columns}
-if "Cod.Mecc." not in colonne:
-    st.error(f"❌ Colonna 'Cod.Mecc.' non trovata. Colonne disponibili: {list(colonne.keys())}")
-    st.stop()
-df = df.rename(columns={colonne["Cod.Mecc."]: "Cod.Mecc."})
-df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
+    df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
     df["Data"] = pd.to_datetime(df["Data"], dayfirst=True, errors="coerce")
     return df
 
@@ -96,8 +95,8 @@ if gare_file and voti_pdf:
             col1, col2 = st.columns([1, 4])
             with col1:
                 st.markdown(f"**{arbitro['Cognome']} {arbitro['Nome']}**")
-                st.markdown(f"`{cod_mecc}` – {arbitro['Ruolo']}")
-                st.markdown(f"Sezione: {arbitro['Sezione']}  \nEtà: {arbitro['Età']}  \nAnzianità: {arbitro['Anzianità']}")
+                st.markdown(f"`{cod_mecc}` – {arbitro.get('Ruolo', '')}")
+                st.markdown(f"Sezione: {arbitro.get('Sezione', '')}  \nEtà: {arbitro.get('Età', '')}  \nAnzianità: {arbitro.get('Anzianità', '')}")
             with col2:
                 for _, gara in gruppo.iterrows():
                     info = f"🗓️ {gara['Data Gara'].date()} | Gara {gara['NumGara']} | OA: {gara['Voto OA']} – OT: {gara['Voto OT']}"
