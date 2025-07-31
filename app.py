@@ -99,7 +99,7 @@ for _, row in df_gare.iterrows():
 indisp_dict = {}
 for _, row in df_indisp.iterrows():
     cod = row["Cod.Mecc."]
-    start, end, motivo = row["Inizio"], row["Fine"], row["Motivazione"]
+    start, end, motivo = row["Inizio"], row["Fine"], row["Motivo"]
     current = start
     while current <= end:
         week = current - timedelta(days=current.weekday())
