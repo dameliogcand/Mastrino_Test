@@ -30,33 +30,12 @@ def carica_anagrafica():
 
 @st.cache_data
 def carica_gare(file):
-    df = pd.read_csv(file, dtype=str, header=None)
+   df = pd.read_csv(file, dtype=str, header=None)
 
-    df.columns = [
-        "NumGara",       # 0
-        "Cod.Mecc.",     # 1
-        "Categoria",     # 2
-        "Giornata",      # 3
-        "Girone",        # 4
-        "Data Gara",     # 5
-        "Ora",           # 6
-        "Cod1",          # 7
-        "Squadra1",      # 8
-        "Cod2",          # 9
-        "Squadra2",      # 10
-        "CodCampo",      # 11
-        "Campo",         # 12
-        "Località",      # 13
-        "IdGara",        # 14
-        "Ruolo",         # 15
-        "Cod.Mecc.2",    # 16
-        "Cognome",       # 17
-        "Nome",          # 18
-        "Età",           # 19
-        "Sezione",       # 20
-        "Anzianità",     # 21
-        "Altro"          # 22
-    ]
+st.warning(f"🧾 Il file ha {df.shape[1]} colonne: {list(df.iloc[0].values)}")
+
+# Fermiamo l'esecuzione per vedere le colonne prima di assegnare i nomi
+st.stop()
 
     df["Cod.Mecc."] = df["Cod.Mecc."].str.strip()
     df["NumGara"] = df["NumGara"].astype(str).str.strip()
