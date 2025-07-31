@@ -15,7 +15,6 @@ SETTIMANE = pd.date_range(start=DATA_INIZIO, end=DATA_FINE, freq='W-MON') - time
 def carica_anagrafica():
     df = pd.read_excel("Arbitri.xlsx")
     df["Cod.Mecc."] = df["Cod.Mecc."].apply(lambda x: str(int(float(x))).strip() if pd.notna(x) else "")
-    df["Età"] = datetime.now().year - pd.to_datetime(df["DataNascita"], errors='coerce').dt.year
     return df
 
 # 📄 Carica gare da Excel (senza intestazioni)
