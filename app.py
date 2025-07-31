@@ -19,7 +19,7 @@ def carica_anagrafica():
 @st.cache_data
 def carica_gare(file):
     df = pd.read_excel(file, header=None)
-    df = df[[1, 2, 3, 4, 6, 16, 17]]  # NumGara, Categoria, Girone, DataGara, Ruolo, Cod.Mecc.
+    df = df[[2, 3, 4, 7, 17, 18]]  # NumGara, Categoria, Girone, DataGara, Ruolo, Cod.Mecc.
     df.columns = ["NumGara", "Categoria", "Girone", "DataGara", "Ruolo", "Cod.Mecc."]
     df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.replace('.0', '', regex=False).str.strip()
     df["NumGara"] = df["NumGara"].astype(str).str.replace('.0', '', regex=False).str.strip()
