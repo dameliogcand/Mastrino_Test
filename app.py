@@ -72,7 +72,7 @@ st.title("Gestione Arbitri - Settimane Calcistiche")
 
 # Caricamento file settimanali
 st.sidebar.header("Caricamento dati settimanali")
-gare_file = st.sidebar.file_uploader("Carica file Gare cra01 (Excel)", type=["xls", "xlsx"])
+gare_file = st.sidebar.file_uploader("Carica file Gare cra01 (Excel)", type=["xls", "xlsx", "csv"])
 voti_file = st.sidebar.file_uploader("Carica file Voti (PDF)", type="pdf")
 indisponibili_file = st.sidebar.file_uploader("Carica file Indisponibilità", type=["xls", "xlsx"])
 
