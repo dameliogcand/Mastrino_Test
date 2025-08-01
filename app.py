@@ -4,17 +4,23 @@ from datetime import datetime, timedelta
 from PyPDF2 import PdfReader
 
 st.set_page_config(layout="wide")
+st.title("📊 Monitoraggio Arbitri – Periodo di test (01/05/2024 – 31/05/2024)")
 
 # Funzione per caricare l'anagrafica
 @st.cache_data
 def carica_anagrafica(file):
     df = pd.read_excel(file)
-    df = df[["Cod.Mecc.", "Cognome", "Nome", "Sezione", "Età"]]
-    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.replace(".0", "", regex=False).str.strip()
-    df["Cognome"] = df["Cognome"].str.strip().str.upper()
-    return df
+    df = df.rename(columns={
+        "Cod.Mecc.": "Cod.Mecc.",
+        "Cognome": "Cognome",
+        "Nome": "Nome",
+        "Sezione": "Sezione",
+        "Età": "Età"
+    })
+    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.replace('.0', '', regex=False).str.strip()
+    return df[["Cod.Mecc.", "Cognome", "Nome", "Sezione", "Età"]]
 
-# Funzione per caricare il file CRA01
+# Funzione per caricare le gare dal file Excel cra01
 @st.cache_data
 def carica_gare(file):
     df = pd.read_excel(file, header=0)
@@ -28,31 +34,27 @@ def carica_gare(file):
         "Column17": "Ruolo"
     })
     df = df[["NumGara", "Cod.Mecc.", "Cognome", "DataGara", "Categoria", "Girone", "Ruolo"]]
-    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.replace(".0", "", regex=False).str.strip()
-    df["Cognome"] = df["Cognome"].str.strip().str.upper()
-    df["NumGara"] = df["NumGara"].astype(str).str.replace(".0", "", regex=False).str.strip()
-    df["DataGara"] = pd.to_datetime(df["DataGara"], errors="coerce")
+    df["NumGara"] = df["NumGara"].astype(str).str.replace('.0', '', regex=False).str.strip()
+    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.replace('.0', '', regex=False).str.strip()
+    df["DataGara"] = pd.to_datetime(df["DataGara"], errors='coerce')
     return df
 
-# Funzione per caricare i voti dal PDF
+# Funzione per caricare i voti da PDF
 @st.cache_data
 def carica_voti(file):
     reader = PdfReader(file)
-    text = ""
+    data = []
     for page in reader.pages:
-        text += page.extract_text() + "\n"
-
-    rows = []
-    for line in text.splitlines():
-        parts = line.split()
-        if len(parts) >= 10 and parts[0].isdigit():
-            num_gara = parts[0].strip()
-            voto_oa = parts[8].replace(",", ".")
-            voto_ot = parts[9].replace(",", ".")
-            rows.append([num_gara, voto_oa, voto_ot])
-
-    df = pd.DataFrame(rows, columns=["NumGara", "Voto OA", "Voto OT"])
-    df["NumGara"] = df["NumGara"].astype(str).str.strip()
+        lines = page.extract_text().split("\n")
+        for line in lines:
+            parts = line.strip().split()
+            if len(parts) >= 10 and parts[0].replace('.', '', 1).isdigit():
+                num_gara = parts[0].strip()
+                voto_oa = parts[8].replace(",", ".")
+                voto_ot = parts[9].replace(",", ".")
+                data.append([num_gara, voto_oa, voto_ot])
+    df = pd.DataFrame(data, columns=["NumGara", "Voto OA", "Voto OT"])
+    df["NumGara"] = df["NumGara"].astype(str).str.replace('.0', '', regex=False).str.strip()
     return df
 
 # Funzione per caricare le indisponibilità
@@ -65,82 +67,89 @@ def carica_indisponibili(file):
         "Fine": "Fine",
         "Motivo": "Motivo"
     })
-    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.replace(".0", "", regex=False).str.strip()
-    df["Inizio"] = pd.to_datetime(df["Inizio"], errors="coerce")
-    df["Fine"] = pd.to_datetime(df["Fine"], errors="coerce")
-    return df
+    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.replace('.0', '', regex=False).str.strip()
+    df["Inizio"] = pd.to_datetime(df["Inizio"], errors='coerce')
+    df["Fine"] = pd.to_datetime(df["Fine"], errors='coerce')
+    return df[["Cod.Mecc.", "Inizio", "Fine", "Motivo"]]
 
 # Upload dei file
-st.title("Visualizzazione Gare, Voti e Indisponibilità")
-anagrafica_file = st.file_uploader("Carica il file ANAGRAFICA (Arbitri.xlsx)", type=["xlsx"])
-gare_file = st.file_uploader("Carica il file GARE (cra01.xlsx)", type=["xlsx"])
-voti_file = st.file_uploader("Carica il file VOTI (Stampa_Elenco_Voti.pdf)", type=["pdf"])
-indisponibili_file = st.file_uploader("Carica il file INDISPONIBILITÀ (Indisponibili.xlsx)", type=["xlsx"])
+anagrafica_file = st.file_uploader("📁 Carica il file Arbitri.xlsx", type=["xlsx"], key="arbitri")
+gare_file = st.file_uploader("📁 Carica il file CRA01.xlsx", type=["xlsx"], key="gare")
+voti_file = st.file_uploader("📁 Carica il file dei voti (.pdf)", type=["pdf"], key="voti")
+indisponibili_file = st.file_uploader("📁 Carica il file Indisponibili.xlsx", type=["xlsx"], key="indisp")
 
 if anagrafica_file:
     df_arbitri = carica_anagrafica(anagrafica_file)
-    df_gare = carica_gare(gare_file) if gare_file else pd.DataFrame()
-    df_voti_raw = carica_voti(voti_file) if voti_file else pd.DataFrame()
-    df_indisp = carica_indisponibili(indisponibili_file) if indisponibili_file else pd.DataFrame()
+else:
+    st.stop()
 
-    # Merge gare con voti su NumGara
-    if not df_voti_raw.empty and not df_gare.empty:
-        df_merged = pd.merge(df_gare, df_voti_raw, on="NumGara", how="left")
-    else:
-        df_merged = df_gare.copy()
+df_gare = carica_gare(gare_file) if gare_file else pd.DataFrame()
+df_voti_raw = carica_voti(voti_file) if voti_file else pd.DataFrame()
+df_indisp = carica_indisponibili(indisponibili_file) if indisponibili_file else pd.DataFrame()
 
-    # Periodo fisso di test
-    start_date = datetime(2025, 5, 1)
-    end_date = datetime(2025, 5, 31)
-    num_weeks = (end_date - start_date).days // 7 + 1
+# Merge gare + voti sul NumGara
+if not df_voti_raw.empty and not df_gare.empty:
+    df_merged = pd.merge(df_gare, df_voti_raw, on="NumGara", how="left")
+else:
+    df_merged = df_gare.copy()
 
-    for _, arbitro in df_arbitri.iterrows():
-        st.markdown(f"### {arbitro['Cognome']} {arbitro['Nome']}")
-        cols = st.columns([1, 1, 1])
-        cols[0].markdown(f"**Sezione:** {arbitro['Sezione']}")
-        cols[1].markdown(f"**Cod.Mecc.:** {arbitro['Cod.Mecc.']}")
-        cols[2].markdown(f"**Età:** {arbitro['Età']}")
+# Verifica presenza Cod.Mecc.
+if "Cod.Mecc." not in df_merged.columns:
+    st.error("❌ Colonna 'Cod.Mecc.' non trovata nel DataFrame unito.")
+    st.write("Colonne disponibili:", list(df_merged.columns))
+    st.stop()
 
-        # Riga settimanale
-        for w in range(num_weeks):
-            week_start = start_date + timedelta(weeks=w)
-            week_end = week_start + timedelta(days=6)
-            week_label = f"**Settimana {w+1}**<br>{week_start.strftime('%d/%m')} - {week_end.strftime('%d/%m')}"
-            st.markdown(week_label, unsafe_allow_html=True)
+# Settimane del periodo test
+inizio_periodo = datetime(2024, 5, 1)
+fine_periodo = datetime(2024, 5, 31)
+settimane = []
+data_corrente = inizio_periodo
+while data_corrente <= fine_periodo:
+    fine_settimana = data_corrente + timedelta(days=6)
+    settimane.append((data_corrente, fine_settimana))
+    data_corrente += timedelta(days=7)
 
-            box = ""
+# Visualizzazione
+for _, arbitro in df_arbitri.iterrows():
+    st.markdown(f"### {arbitro['Cognome']} {arbitro['Nome']}")
+    col1, col2, col3 = st.columns(3)
+    col1.markdown(f"**Cod.Mecc.:** {arbitro['Cod.Mecc.']}")
+    col2.markdown(f"**Sezione:** {arbitro['Sezione']}")
+    col3.markdown(f"**Età:** {arbitro['Età']}")
 
-            # Gare
-            gare_sett = df_merged[
-                (df_merged["Cod.Mecc."] == arbitro["Cod.Mecc."]) &
-                (df_merged["Cognome"] == arbitro["Cognome"]) &
-                (df_merged["DataGara"] >= week_start) &
-                (df_merged["DataGara"] <= week_end)
-            ]
+    for inizio_sett, fine_sett in settimane:
+        st.markdown(f"#### 🗓️ Settimana {inizio_sett.strftime('%d/%m/%Y')} – {fine_sett.strftime('%d/%m/%Y')}")
+        gare_sett = df_merged[
+            (df_merged["Cod.Mecc."] == arbitro["Cod.Mecc."]) &
+            (df_merged["Cognome"].str.upper() == arbitro["Cognome"].upper()) &
+            (df_merged["DataGara"] >= inizio_sett) &
+            (df_merged["DataGara"] <= fine_sett)
+        ]
+
+        indisp_sett = df_indisp[
+            (df_indisp["Cod.Mecc."] == arbitro["Cod.Mecc."]) &
+            (df_indisp["Inizio"] <= fine_sett) &
+            (df_indisp["Fine"] >= inizio_sett)
+        ]
+
+        if gare_sett.empty and indisp_sett.empty:
+            st.markdown("ℹ️ Nessuna gara o indisponibilità.")
+        else:
             for _, gara in gare_sett.iterrows():
+                ruolo = gara["Ruolo"]
                 cat = gara["Categoria"]
                 gir = gara["Girone"]
-                ruolo = gara["Ruolo"]
                 voto_oa = gara.get("Voto OA", "")
                 voto_ot = gara.get("Voto OT", "")
-                voti_str = ""
+                descrizione = f"**{cat} – {gir} – {ruolo}**"
                 if pd.notna(voto_oa):
-                    voti_str += f" OA: {voto_oa}"
+                    descrizione += f" – OA: {voto_oa}"
                 if pd.notna(voto_ot):
-                    voti_str += f" OT: {voto_ot}"
-                box += f"**{cat} – {gir} – {ruolo}**{voti_str}<br>"
+                    descrizione += f" – OT: {voto_ot}"
+                st.markdown(descrizione)
 
-            # Indisponibilità
-            if not df_indisp.empty:
-                indisp_sett = df_indisp[
-                    (df_indisp["Cod.Mecc."] == arbitro["Cod.Mecc."]) &
-                    (df_indisp["Inizio"] <= week_end) &
-                    (df_indisp["Fine"] >= week_start)
-                ]
-                for _, ind in indisp_sett.iterrows():
-                    box += f"<span style='color:red'>INDISPONIBILE: {ind['Motivo']}</span><br>"
+            for _, ind in indisp_sett.iterrows():
+                motivo = ind["Motivo"]
+                st.markdown(f"❌ **Indisponibile:** {motivo}")
 
-            if box == "":
-                box = "<span style='color:gray'>-</span>"
-
-            st.markdown(f"<div style='border:1px solid #ddd; padding:6px; border-radius:4px; background:#f9f9f9'>{box}</div>", unsafe_allow_html=True)
+st.success("✅ Visualizzazione completata.")
