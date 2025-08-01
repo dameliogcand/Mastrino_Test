@@ -89,9 +89,20 @@ df_indisp = carica_indisponibili(indisponibili_file) if indisponibili_file else 
 
 # Merge gare + voti sul NumGara
 if not df_voti_raw.empty and not df_gare.empty:
+    st.write("✅ Colonne in df_gare prima del merge:", df_gare.columns.tolist())
+    st.write("✅ Colonne in df_voti_raw prima del merge:", df_voti_raw.columns.tolist())
+
     df_merged = pd.merge(df_gare, df_voti_raw, on="NumGara", how="left")
+
+    st.write("✅ Colonne in df_merged dopo il merge:", df_merged.columns.tolist())
 else:
     df_merged = df_gare.copy()
+
+if "Cod.Mecc." not in df_merged.columns:
+    st.error("❌ Colonna 'Cod.Mecc.' non trovata nel DataFrame unito.")
+    st.write("Colonne disponibili:", df_merged.columns.tolist())
+    st.stop()
+
 
 # Verifica presenza Cod.Mecc.
 if "Cod.Mecc." not in df_merged.columns:
