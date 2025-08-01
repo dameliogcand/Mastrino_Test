@@ -94,6 +94,16 @@ if not df_gare.empty and not df_voti.empty:
 else:
     df_merged = df_gare.copy()
 
+# Verifica che Cod.Mecc. esista
+if "Cod.Mecc." not in df_merged.columns:
+    st.error("❌ Colonna 'Cod.Mecc.' non trovata nel DataFrame unito.")
+    st.write("Colonne disponibili:", df_merged.columns.tolist())
+    st.stop()
+
+# Pulizia Cod.Mecc. dopo merge
+df_merged["Cod.Mecc."] = df_merged["Cod.Mecc."].astype(str).str.replace('.0', '', regex=False).str.strip()
+
+
 # Creazione settimane
 settimane = []
 data_attuale = DATA_INIZIO
