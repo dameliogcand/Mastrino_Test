@@ -1,84 +1,104 @@
 import streamlit as st
 import pandas as pd
-import datetime
+from datetime import datetime, timedelta
+import PyPDF2
 
 st.set_page_config(layout="wide")
 
-# Funzione per rinominare le colonne in base al tipo di file
+# --- Funzione per generare le settimane ---
+def genera_settimane(start_date, end_date):
+    settimane = []
+    current = start_date
+    while current <= end_date:
+        week_start = current
+        week_end = current + timedelta(days=6)
+        settimane.append((week_start, week_end))
+        current += timedelta(days=7)
+    return settimane
+
+SETTIMANE = genera_settimane(datetime(2025, 5, 1), datetime(2025, 5, 31))
+
+# --- Mappature colonne ---
 def rinomina_colonne(df, tipo):
-    if tipo == "arbitri":
-        if len(df.columns) < 6:
-            st.error("❌ Il file arbitri ha meno colonne del previsto.")
-            st.stop()
-        df.columns = ["Attivita", Cod.Mecc.", "Cognome", "Nome", "Sezione", "Età"]
-    elif tipo == "gare":
-        if len(df.columns) < 19:
-            st.error("❌ Il file CRA01 ha meno colonne del previsto.")
-            st.stop()
-        df.columns.values[1] = "NumGara"
-        df.columns.values[2] = "Categoria"
-        df.columns.values[3] = "Girone"
-        df.columns.values[6] = "DataGara"
-        df.columns.values[16] = "Ruolo"
-        df.columns.values[17] = "Cod.Mecc."
-        df.columns.values[18] = "Cognome"
-    elif tipo == "voti":
-        if len(df.columns) < 10:
-            st.error("❌ Il file voti ha meno colonne del previsto.")
-            st.stop()
-        df.columns.values[0] = "NumGara"
-        df.columns.values[8] = "Voto OA"
-        df.columns.values[9] = "Voto OT"
-    elif tipo == "indisponibili":
-        if len(df.columns) < 11:
-            st.error("❌ Il file indisponibili ha meno colonne del previsto.")
-            st.stop()
-        df.columns.values[1] = "Cod.Mecc."
-        df.columns.values[8] = "Inizio"
-        df.columns.values[9] = "Fine"
-        df.columns.values[10] = "Motivo"
+    mappature = {
+        "arbitri": {
+            0: "Cod.Mecc.", 1: "Cognome", 2: "Nome", 3: "Sezione", 4: "Anzianità", 5: "Età"
+        },
+        "gare": {
+            1: "NumGara", 2: "Categoria", 3: "Girone", 6: "DataGara", 16: "Ruolo", 17: "Cod.Mecc.", 18: "Cognome"
+        },
+        "voti": {
+            0: "NumGara", 8: "Voto OA", 9: "Voto OT"
+        },
+        "indisponibili": {
+            0: "Cod.Mecc.", 7: "Inizio", 8: "Fine", 9: "Motivo"
+        }
+    }
+    mappa = mappature.get(tipo)
+    if mappa:
+        df = df.rename(columns={df.columns[i]: nome for i, nome in mappa.items() if i < len(df.columns)})
     return df
 
-# Funzioni di caricamento file
+# --- Caricamento file ---
 @st.cache_data
 def carica_anagrafica(file):
     df = pd.read_excel(file)
+    if len(df.columns) < 6:
+        st.error("❌ Il file arbitri ha meno colonne del previsto.")
+        st.stop()
     df = rinomina_colonne(df, "arbitri")
-    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str[-7:].str.strip()
+    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.zfill(8).str.strip()
+    df["Cognome"] = df["Cognome"].str.strip().str.upper()
     return df
 
 @st.cache_data
 def carica_gare(file):
-    df = pd.read_excel(file, header=0)
+    df = pd.read_excel(file)
+    if len(df.columns) < 19:
+        st.error("❌ Il file CRA01 ha meno colonne del previsto.")
+        st.stop()
     df = rinomina_colonne(df, "gare")
-    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str[-7:].str.strip()
-    df["NumGara"] = df["NumGara"].astype(str).str.replace('.0', '', regex=False).str.strip()
+    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.zfill(7).str.strip()
+    df["Cognome"] = df["Cognome"].str.strip().str.upper()
+    df["NumGara"] = df["NumGara"].astype(str).str.replace(".0", "", regex=False).str.strip()
     df["DataGara"] = pd.to_datetime(df["DataGara"], errors="coerce")
     return df
 
 @st.cache_data
 def carica_voti(file):
-    df = pd.read_excel(file)
-    df = rinomina_colonne(df, "voti")
-    df["NumGara"] = df["NumGara"].astype(str).str.replace('.0', '', regex=False).str.strip()
+    reader = PyPDF2.PdfReader(file)
+    data = []
+    for page in reader.pages:
+        text = page.extract_text()
+        if not text:
+            continue
+        for line in text.split("\n"):
+            parts = line.split()
+            if len(parts) >= 10 and parts[0].isdigit():
+                numgara = parts[0].strip()
+                voto_oa = parts[8].replace(",", ".").strip()
+                voto_ot = parts[9].replace(",", ".").strip()
+                data.append({"NumGara": numgara, "Voto OA": voto_oa, "Voto OT": voto_ot})
+    df = pd.DataFrame(data)
+    df["NumGara"] = df["NumGara"].astype(str).str.strip()
     return df
 
 @st.cache_data
 def carica_indisponibili(file):
     df = pd.read_excel(file)
     df = rinomina_colonne(df, "indisponibili")
-    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str[-7:].str.strip()
+    df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.zfill(8).str.strip()
     df["Inizio"] = pd.to_datetime(df["Inizio"], errors="coerce")
     df["Fine"] = pd.to_datetime(df["Fine"], errors="coerce")
     return df
 
-# Interfaccia utente
-st.title("📋 Monitoraggio Gare e Voti Arbitri")
+# --- Caricamento da Streamlit ---
+st.title("Gestione Arbitri – Periodo di Test")
 
-arbitri_file = st.file_uploader("Carica il file Arbitri.xlsx", type="xlsx")
-gare_file = st.file_uploader("Carica il file CRA01.xlsx", type="xlsx")
-voti_file = st.file_uploader("Carica il file Voti.xlsx", type="xlsx")
-indisponibili_file = st.file_uploader("Carica il file Indisponibili.xlsx", type="xlsx")
+arbitri_file = st.file_uploader("📋 Carica file Arbitri.xlsx", type=["xlsx"])
+gare_file = st.file_uploader("📑 Carica file CRA01.xlsx", type=["xlsx"])
+voti_file = st.file_uploader("📄 Carica file Stampa_Elenco_Voti.pdf", type=["pdf"])
+indisponibili_file = st.file_uploader("🚫 Carica file Indisponibili.xlsx", type=["xlsx"])
 
 if arbitri_file:
     df_arbitri = carica_anagrafica(arbitri_file)
@@ -86,19 +106,13 @@ if arbitri_file:
     df_voti = carica_voti(voti_file) if voti_file else pd.DataFrame()
     df_indisp = carica_indisponibili(indisponibili_file) if indisponibili_file else pd.DataFrame()
 
-    if not df_voti.empty and not df_gare.empty:
-        if "NumGara" not in df_voti.columns or "NumGara" not in df_gare.columns:
-            st.error("❌ Colonna 'NumGara' mancante per il merge.")
-            st.stop()
-        df_merged = pd.merge(df_gare, df_voti, on="NumGara", how="left")
-    else:
-        df_merged = df_gare.copy()
+    # --- Merge gare e voti ---
+    if "NumGara" not in df_voti.columns or "NumGara" not in df_gare.columns:
+        st.error("❌ Colonna 'NumGara' mancante per il merge.")
+        st.stop()
+    df_merged = pd.merge(df_gare, df_voti, on="NumGara", how="left")
 
-    # Intervallo test: maggio 2024
-    start_date = datetime.datetime(2024, 5, 1)
-    end_date = datetime.datetime(2024, 5, 31)
-    week_range = pd.date_range(start=start_date, end=end_date, freq="W-SUN")
-
+    # --- Visualizzazione Arbitri ---
     for _, arbitro in df_arbitri.iterrows():
         st.markdown("---")
         st.subheader(f"{arbitro['Cognome']} {arbitro['Nome']}")
@@ -107,39 +121,38 @@ if arbitri_file:
         col2.markdown(f"**Sezione:** {arbitro['Sezione']}")
         col3.markdown(f"**Età:** {arbitro['Età']}")
 
-        for i in range(len(week_range) - 1):
-            week_start = week_range[i]
-            week_end = week_range[i + 1]
+        tabella = []
+        for settimana in SETTIMANE:
+            inizio, fine = settimana
+            cella = ""
 
-            settimana = f"**Settimana {week_start.strftime('%d/%m')} – {week_end.strftime('%d/%m')}:**"
-            with st.container():
-                st.markdown(settimana)
+            gare_sett = df_merged[
+                (df_merged["Cod.Mecc."].astype(str).str[-7:] == arbitro["Cod.Mecc."].zfill(8)[-7:]) &
+                (df_merged["Cognome"] == arbitro["Cognome"]) &
+                (df_merged["DataGara"] >= inizio) &
+                (df_merged["DataGara"] <= fine)
+            ]
 
-                # Gare
-                gare_sett = df_merged[
-                    (df_merged["Cod.Mecc."].astype(str).str[-7:] == str(arbitro["Cod.Mecc."])) &
-                    (df_merged["Cognome"].str.upper().str.strip() == str(arbitro["Cognome"]).upper().strip()) &
-                    (df_merged["DataGara"] >= week_start) & (df_merged["DataGara"] <= week_end)
-                ]
+            for _, gara in gare_sett.iterrows():
+                cat = gara.get("Categoria", "")
+                girone = gara.get("Girone", "")
+                ruolo = gara.get("Ruolo", "")
+                oa = gara.get("Voto OA", "")
+                ot = gara.get("Voto OT", "")
+                voti = f"OA: {oa}" if pd.notna(oa) else ""
+                voti += f" OT: {ot}" if pd.notna(ot) else ""
+                cella += f"{cat} – {girone} – {ruolo} {voti}\n"
 
-                if not gare_sett.empty:
-                    for _, gara in gare_sett.iterrows():
-                        ruolo = gara["Ruolo"]
-                        categoria = gara["Categoria"]
-                        girone = str(gara["Girone"]).strip()[-1]
-                        voto_oa = gara.get("Voto OA", "")
-                        voto_ot = gara.get("Voto OT", "")
-                        voti_str = f"OA: {voto_oa}" if pd.notnull(voto_oa) else ""
-                        voti_str += f" OT: {voto_ot}" if pd.notnull(voto_ot) else ""
-                        st.markdown(f"- {categoria} – {girone} – {ruolo} {voti_str}")
-                else:
-                    st.markdown("_Nessuna gara assegnata._")
+            # Indisponibilità
+            indisp = df_indisp[
+                (df_indisp["Cod.Mecc."] == arbitro["Cod.Mecc."]) &
+                (df_indisp["Inizio"] <= fine) &
+                (df_indisp["Fine"] >= inizio)
+            ]
+            for _, r in indisp.iterrows():
+                cella += f"INDISP: {r['Motivo']}\n"
 
-                # Indisponibilità
-                if not df_indisp.empty:
-                    indisp = df_indisp[
-                        (df_indisp["Cod.Mecc."] == arbitro["Cod.Mecc."]) &
-                        (df_indisp["Inizio"] <= week_end) & (df_indisp["Fine"] >= week_start)
-                    ]
-                    for _, row in indisp.iterrows():
-                        st.warning(f"Indisponibile: {row['Motivo']} ({row['Inizio'].date()} – {row['Fine'].date()})")
+            tabella.append(cella.strip())
+
+        df_tab = pd.DataFrame([tabella], columns=[f"{i[0].strftime('%d/%m')} – {i[1].strftime('%d/%m')}" for i in SETTIMANE])
+        st.dataframe(df_tab.T, use_container_width=True)
