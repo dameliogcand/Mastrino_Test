@@ -48,7 +48,7 @@ def carica_anagrafica(file):
         st.stop()
     df = rinomina_colonne(df, "arbitri")
     df["Cod.Mecc."] = df["Cod.Mecc."].astype(str).str.zfill(8).str.strip()
-    df["Cognome"] = df["Cognome"].str.strip().str.upper()
+    df["Cognome"] = df["Cognome"].astype(str).str.strip().str.upper()
     return df
 
 @st.cache_data
