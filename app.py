@@ -10,7 +10,7 @@ def rinomina_colonne(df, tipo):
         if len(df.columns) < 6:
             st.error("❌ Il file arbitri ha meno colonne del previsto.")
             st.stop()
-        df.columns = ["Cod.Mecc.", "Cognome", "Nome", "Sezione", "Anzianità", "Età"]
+        df.columns = ["Attivita", Cod.Mecc.", "Cognome", "Nome", "Sezione", "Età"]
     elif tipo == "gare":
         if len(df.columns) < 19:
             st.error("❌ Il file CRA01 ha meno colonne del previsto.")
