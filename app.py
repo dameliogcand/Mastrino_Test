@@ -12,15 +12,15 @@ st.title("📊 Visualizzazione Arbitri – Periodo Test")
 def rinomina_colonne(df, tipo):
     try:
         if tipo == "arbitri":
-            if len(df.columns) < 8:
-                st.error("❌ Il file Arbitri ha meno di 8 colonne.")
+            if len(df.columns) < 6:
+                st.error("❌ Il file Arbitri ha meno di 6 colonne.")
                 st.stop()
             return df.rename(columns={
-                df.columns[1]: "Cod.Mecc.",
-                df.columns[2]: "Cognome",
-                df.columns[3]: "Nome",
-                df.columns[4]: "Sezione",
-                df.columns[7]: "Età"
+                df.columns[2]: "Cod.Mecc.",
+                df.columns[3]: "Cognome",
+                df.columns[4]: "Nome",
+                df.columns[5]: "Sezione",
+                df.columns[6]: "Età"
             })
 
         elif tipo == "gare":
